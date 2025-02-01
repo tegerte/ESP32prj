@@ -1,6 +1,8 @@
 
 #include <WiFiManager.h>
 #include "time.h"
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
 
 const char *ntpServer = "pool.ntp.org";
 // const long gmtOffset_sec = 3600;
@@ -10,6 +12,12 @@ void printLocalTime(void);
 void setTZ(String);
 void init_time(String);
 void setup_wifi(void);
+String lat = "48.620253";
+String lon = "8.779804";
+String asl = "505";
+// String URL = "https://my.meteoblue.com/packages/basic-1h_basic-day?lat=47.558&lon=7.573&apikey=DEMOKEY?";
+String URL_basic = "https://my.meteoblue.com/packages/basic-1h_basic-day?";
+String ApiKey = "d1y5SCbUuhAPBmR6";
 
 void setup()
 {
@@ -21,9 +29,50 @@ void setup()
 
 void loop()
 {
-  
+
   delay(1000);
   printLocalTime();
+  HTTPClient http;
+  http.begin(URL_basic + "lat=" + lat + "&lon=" + lon + "&asl=" + asl + "&apikey=" + ApiKey);
+  int httpCode = http.GET();
+
+  // httpCode will be negative on error
+  if (httpCode > 0)
+  {
+    String JSON_Data = http.getString();
+    // Serial.println(JSON_Data);
+
+    JsonDocument doc;
+    deserializeJson(doc, JSON_Data);
+    JsonObject obj = doc.as<JsonObject>();
+
+    // Display the Current Weather Info
+    // const float temp = doc["data_1h"]["temperature"][0];
+    // Serial.print("Temperature: "+ String(temp) + "°C\n");
+
+    JsonObject data_1h = obj["data_1h"].as<JsonObject>();
+    for (JsonObject::iterator it = data_1h.begin(); it != data_1h.end(); ++it)
+    {
+      Serial.println("\n\n" + String(it->key().c_str()));
+      if (it->value().is<JsonArray>())
+      {
+        for (JsonVariant v : it->value().as<JsonArray>())
+        {
+          Serial.print(v.as<String>() + ",");
+        }
+      }
+      else
+      {
+        Serial.println(it->value().as<String>());
+      }
+    }
+  }
+  else
+  {
+    Serial.print("Error! HTTP return code: " + httpCode);
+  }
+  http.end();
+  delay(5000);
 }
 
 // put function definitions here:
