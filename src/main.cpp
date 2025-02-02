@@ -17,7 +17,7 @@ String lon = "8.779804";
 String asl = "505";
 // String URL = "https://my.meteoblue.com/packages/basic-1h_basic-day?lat=47.558&lon=7.573&apikey=DEMOKEY?";
 String URL_basic = "https://my.meteoblue.com/packages/basic-1h_basic-day?";
-String ApiKey = "d1y5SCbUuhAPBmR6";
+String ApiKey = "";
 
 void setup()
 {
