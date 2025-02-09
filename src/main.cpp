@@ -3,6 +3,7 @@
 #include "time.h"
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include "Arduino.h"
 
 const char *ntpServer = "pool.ntp.org";
 // const long gmtOffset_sec = 3600;
@@ -12,6 +13,8 @@ void printLocalTime(void);
 void setTZ(String);
 void init_time(String);
 void setup_wifi(void);
+void print_data_1h(ArduinoJson::V730PB22::JsonObject &data_block);
+
 String lat = "48.620253";
 String lon = "8.779804";
 String asl = "505";
@@ -30,7 +33,6 @@ void setup()
 void loop()
 {
 
-  delay(1000);
   printLocalTime();
   HTTPClient http;
   http.begin(URL_basic + "lat=" + lat + "&lon=" + lon + "&asl=" + asl + "&apikey=" + ApiKey);
@@ -46,36 +48,43 @@ void loop()
     deserializeJson(doc, JSON_Data);
     JsonObject obj = doc.as<JsonObject>();
 
-    // Display the Current Weather Info
     // const float temp = doc["data_1h"]["temperature"][0];
     // Serial.print("Temperature: "+ String(temp) + "°C\n");
-
     JsonObject data_1h = obj["data_1h"].as<JsonObject>();
-    for (JsonObject::iterator it = data_1h.begin(); it != data_1h.end(); ++it)
-    {
-      Serial.println("\n\n" + String(it->key().c_str()));
-      if (it->value().is<JsonArray>())
-      {
-        for (JsonVariant v : it->value().as<JsonArray>())
-        {
-          Serial.print(v.as<String>() + ",");
-        }
-      }
-      else
-      {
-        Serial.println(it->value().as<String>());
-      }
-    }
+    print_data_1h(data_1h);
+    JsonObject data_day = obj["data_day"].as<JsonObject>();
+    print_data_1h(data_day);
   }
   else
   {
     Serial.print("Error! HTTP return code: " + httpCode);
   }
   http.end();
-  delay(5000);
+  
+  delay(60000);
 }
 
-// put function definitions here:
+
+//print Weather data for a JSON-Block
+void print_data_1h(ArduinoJson::V730PB22::JsonObject &data_block)
+{
+  for (JsonObject::iterator it = data_block.begin(); it != data_block.end(); ++it)
+  {
+    Serial.println("\n\n" + String(it->key().c_str()));
+    if (it->value().is<JsonArray>())
+    {
+      for (JsonVariant v : it->value().as<JsonArray>())
+      {
+        Serial.print(v.as<String>() + ",");
+      }
+    }
+    else
+    {
+      Serial.println(it->value().as<String>());
+    }
+  }
+} // put function definitions here:
+//print the local time nicely formatted
 void printLocalTime()
 {
   struct tm timeinfo;
@@ -86,7 +95,6 @@ void printLocalTime()
   }
   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
 }
-
 // Connect to NTP and then set timezone
 void init_time(String timezone)
 {
@@ -103,7 +111,6 @@ void init_time(String timezone)
   // Now we can set the real timezone
   setTZ(timezone);
 }
-
 // Set timezone when connected to NTP-Service
 void setTZ(String timezone)
 {
@@ -111,7 +118,6 @@ void setTZ(String timezone)
   setenv("TZ", timezone.c_str(), 1); //  Now adjust the TZ.  Clock settings are adjusted to show the new local time
   tzset();
 }
-
 // init WiFi
 void setup_wifi()
 {
