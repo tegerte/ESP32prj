@@ -1,3 +1,28 @@
+temperature_max
+3.4,
+4.81,
+6.69,
+6.78,
+2.34,
+1.47,
+3.43,
+temperature_max
+1,
+1,
+1,
+1,
+0,
+1,
+1,
+felttemperature_min
+-5.62,
+-5.62,
+-5.26,
+-4.72,
+-5.56,
+-5.96,
+-4.82,
+
 {
     "metadata": {
         "modelrun_updatetime_utc": "2025-02-01 20:58",
