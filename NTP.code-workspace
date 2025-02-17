@@ -10,6 +10,10 @@
 		{
 			"name": "Wifi_manager",
 			"path": "../../../../programming/ESP32/Wifi_manager"
+		},
+		{
+			"name": "Internetradio_Nextion",
+			"path": "../../../../programming/ESP32/Internetradio_Nextion"
 		}
 	],
 	"settings": {}
