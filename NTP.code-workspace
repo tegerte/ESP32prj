@@ -14,7 +14,15 @@
 		{
 			"name": "Internetradio_Nextion",
 			"path": "../../../../programming/ESP32/Internetradio_Nextion"
+		},
+		{
+			"name": "arduino-audio-tools",
+			"path": "../../../../programming/ESP32/Internetradio_Nextion/include/arduino-audio-tools"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.associations": {
+			"ctime": "cpp"
+		}
+	}
 }

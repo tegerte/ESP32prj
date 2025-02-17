@@ -5,12 +5,11 @@
 #include <ArduinoJson.h>
 #include "Arduino.h"
 #include <Adafruit_Sensor.h>
-#include <DHT.h>
-#include <DHT_U.h>
+#include "DHT.h"
 #include <MD_Parola.h>
 #include <MD_MAX72xx.h>
 #include <SPI.h>
-
+#include <ArduinoOTA.h>
 // Define the number of devices we have in the chain and the hardware interface
 // NOTE: These pin numbers will probably not work with your hardware and may
 // need to be adapted
@@ -56,6 +55,8 @@ uint8_t frameDelay = 25; // default frame delay value
 
 #define DHTPIN 22     // Digital pin connected to the DHT sensor
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
+// Initialize DHT sensor.
+DHT dht(DHTPIN, DHTTYPE);
 // const long gmtOffset_sec = 3600;
 // const int daylightOffset_sec = 3600;
 //  put function declarations here:
@@ -66,7 +67,7 @@ void setup_wifi(void);
 void print_data_1h(ArduinoJson::V730PB22::JsonObject &data_block);
 void print_my_weather_data(ArduinoJson::V730PB22::JsonObject &data_block, int days_to_show);
 String read_temp_humidity_new(void);
-void switchAnimation(int, char const*, char const*);
+void switchAnimation(int, char const *, char const *);
 
 const char *ntpServer = "pool.ntp.org";
 String lat = "48.620253";
@@ -77,8 +78,7 @@ String URL_basic = "https://my.meteoblue.com/packages/basic-1h_basic-day?";
 String ApiKey = "";
 int days_to_show = 3;
 
-// Initialize DHT sensor.
-DHT_Unified dht(DHTPIN, DHTTYPE);
+
 uint32_t delayMS;
 uint8_t curText;
 // Initialize the Parola library using the hardware SPI pins
@@ -88,55 +88,13 @@ void setup()
 {
   Serial.begin(921600);
   setup_wifi();
-  // configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  init_time("CET-1CEST,M3.5.0,M10.5.0/3"); // Europe/Berlin https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
-  dht.begin();
 
-  // Print temperature sensor details.
-  sensor_t sensor;
-  dht.temperature().getSensor(&sensor);
-  Serial.println(F("------------------------------------"));
-  Serial.println(F("Temperature Sensor"));
-  Serial.print(F("Sensor Type: "));
-  Serial.println(sensor.name);
-  Serial.print(F("Driver Ver:  "));
-  Serial.println(sensor.version);
-  Serial.print(F("Unique ID:   "));
-  Serial.println(sensor.sensor_id);
-  Serial.print(F("Max Value:   "));
-  Serial.print(sensor.max_value);
-  Serial.println(F("°C"));
-  Serial.print(F("Min Value:   "));
-  Serial.print(sensor.min_value);
-  Serial.println(F("°C"));
-  Serial.print(F("Resolution:  "));
-  Serial.print(sensor.resolution);
-  Serial.println(F("°C"));
-  Serial.println(F("------------------------------------"));
-  // Print humidity sensor details.
-  dht.humidity().getSensor(&sensor);
-  Serial.println(F("Humidity Sensor"));
-  Serial.print(F("Sensor Type: "));
-  Serial.println(sensor.name);
-  Serial.print(F("Driver Ver:  "));
-  Serial.println(sensor.version);
-  Serial.print(F("Unique ID:   "));
-  Serial.println(sensor.sensor_id);
-  Serial.print(F("Max Value:   "));
-  Serial.print(sensor.max_value);
-  Serial.println(F("%"));
-  Serial.print(F("Min Value:   "));
-  Serial.print(sensor.min_value);
-  Serial.println(F("%"));
-  Serial.print(F("Resolution:  "));
-  Serial.print(sensor.resolution);
-  Serial.println(F("%"));
-  Serial.println(F("------------------------------------"));
-  // Set delay between sensor readings based on sensor details.
-  delayMS = sensor.min_delay / 1000;
+  init_time("CET-1CEST,M3.5.0,M10.5.0/3"); // Europe/Berlin https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
+  init_dht();
 
   P.begin();
   P.setInvert(false);
+  init_OTA();
   switchAnimation(0, "Los gehts!", "Los gehts!");
 }
 
@@ -144,21 +102,52 @@ void loop()
 {
   String curr_loc_tm = displayLocalTime();
   static int animationId = 0;
-  //P.print(curr_loc_tm);
-  //Do_the_HTTP_stuff();
-  String temp = read_temp_humidity_new();
-  Serial.println(curr_loc_tm);
-  const char* tm =  curr_loc_tm.c_str(); 
-  const char* temp_c = temp.c_str();
+  //////////////////////////             do all temp related stuff    //////////////////////////
+  String temp_hum;
+  static unsigned long last_run_temp_readout = 0;
+  const unsigned long INTERV_DUR_temperature = 100;
+  if (millis() - last_run_temp_readout >= INTERV_DUR_temperature) {
+    last_run_temp_readout = millis();
+    temp_hum = read_temp_humidity_new();
+  }
+
+  //////////////////////////             do all HTTP related stuff    //////////////////////////
+  /*static unsigned long last_run_http = 0;
+  const unsigned long INTERV_DUR_http = 1000 * 60 * 60;
+  if (millis() - last_run_http >= INTERV_DUR_http)
+  {
+    last_run_http = millis();
+    Do_the_HTTP_stuff();
+  }
+  */
+  
+  // Serial.println(curr_loc_tm);
+  const char *tm = curr_loc_tm.c_str();
+  const char *temp_hum_c = temp_hum.c_str();
+ 
   if (P.displayAnimate())
   {
     P.displayReset();
-    Serial.println(curr_loc_tm+ " from animation loop");
-    switchAnimation(++animationId % 2, tm, temp_c);
+    // Serial.println(curr_loc_tm+ " from animation loop");
+    switchAnimation(++animationId % 2, tm, temp_hum_c);
   };
+  ArduinoOTA.handle();
   delay(100);
 }
+// Initialize OTA
+void init_OTA()
+{
+  ArduinoOTA.setHostname("WeatherNtpClock");
+  ArduinoOTA.setPassword("flash_me_71");
+  ArduinoOTA.begin();
+}
+// Initialize the DHT sensor
+void init_dht()
+{
+  dht.begin();
 
+  
+}
 // Do the HTTP stuff, query weather API
 void Do_the_HTTP_stuff()
 {
@@ -191,19 +180,18 @@ void Do_the_HTTP_stuff()
   }
   http.end();
 }
-
 // Toggle between animations
 void switchAnimation(int animationId, char const* the_tm, const char* the_temp)
 {
   switch (animationId)
   {
   case 0:
-    //P.displayText("NTP", PA_CENTER, 100, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+    // P.displayText("NTP", PA_CENTER, 100, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
     P.displayText(the_tm, PA_CENTER, 100, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
     break;
   case 1:
     P.displayText(the_temp, PA_CENTER, 100, 0, PA_SCROLL_RIGHT, PA_SCROLL_RIGHT);
-    //P.displayText("PTN", PA_CENTER, 100, 0, PA_SCROLL_RIGHT, PA_SCROLL_RIGHT);
+    // P.displayText("PTN", PA_CENTER, 100, 0, PA_SCROLL_RIGHT, PA_SCROLL_RIGHT);
     break;
   }
 }
@@ -211,35 +199,15 @@ void switchAnimation(int animationId, char const* the_tm, const char* the_temp)
 String read_temp_humidity_new()
 {
   String temp_humid_str;
-  sensors_event_t event;
-  dht.temperature().getEvent(&event);
-  if (isnan(event.temperature))
-  {
-    Serial.println(F("Error reading temperature!"));
-    return  String();
-  }
-  else
-  {
-    Serial.print(F("Temperature: "));
-    Serial.print(event.temperature);
-    Serial.println(F("°C"));
-    temp_humid_str= String(event.temperature) + "°C";
-  }
+  //sensors_event_t event;
+  //dht.temperature().getEvent(&event);
+  temp_humid_str = String(dht.readTemperature()) + " C";
+  
   // Get humidity event and print its value.
-  dht.humidity().getEvent(&event);
-  if (isnan(event.relative_humidity))
-  {
-    Serial.println(F("Error reading humidity!"));
-    return String();
-  }
-  else
-  {
-    Serial.print(F("Humidity: "));
-    Serial.print(event.relative_humidity);
-    Serial.println(F("%"));
-    temp_humid_str = temp_humid_str + ", "  + String(event.relative_humidity) + "%";
-    return temp_humid_str;
-  }
+  temp_humid_str = temp_humid_str + " -- " + String(dht.readHumidity()) + " %";
+  
+  return temp_humid_str;
+  
 }
 // extract the  interesting values from the JSON-Block
 void print_my_weather_data(ArduinoJson::V730PB22::JsonObject &data_block, int days_to_show)
@@ -268,7 +236,6 @@ void print_my_weather_data(ArduinoJson::V730PB22::JsonObject &data_block, int da
   //   }
   // }
 }
-
 // print Weather data for a JSON-Block
 void print_data_1h(ArduinoJson::V730PB22::JsonObject &data_block)
 {
@@ -292,14 +259,16 @@ void print_data_1h(ArduinoJson::V730PB22::JsonObject &data_block)
 String displayLocalTime()
 {
   struct tm timeinfo;
+  String frmt = "%H:%M:%S -- %a -- %d.%m.";
   if (!getLocalTime(&timeinfo))
   {
     Serial.println("Failed to obtain time");
     return String();
   }
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+
+  Serial.println(&timeinfo, frmt.c_str());
   char timeStringBuff[50]; // Buffer to hold the formatted time
-  strftime(timeStringBuff, sizeof(timeStringBuff), "%A, %H:%M:%S", &timeinfo);
+  strftime(timeStringBuff, sizeof(timeStringBuff), frmt.c_str(), &timeinfo);
   return String(timeStringBuff);
 }
 // Connect to NTP and then set timezone
