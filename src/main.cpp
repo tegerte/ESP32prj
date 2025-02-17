@@ -183,14 +183,15 @@ void Do_the_HTTP_stuff()
 // Toggle between animations
 void switchAnimation(int animationId, char const* the_tm, const char* the_temp)
 {
+  int speed = 5;
   switch (animationId)
   {
-  case 0:
+    case 0:
     // P.displayText("NTP", PA_CENTER, 100, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
-    P.displayText(the_tm, PA_CENTER, 100, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+    P.displayText(the_tm, PA_CENTER, speed, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
     break;
   case 1:
-    P.displayText(the_temp, PA_CENTER, 100, 0, PA_SCROLL_RIGHT, PA_SCROLL_RIGHT);
+    P.displayText(the_temp, PA_CENTER, speed, 0, PA_SCROLL_RIGHT, PA_SCROLL_RIGHT);
     // P.displayText("PTN", PA_CENTER, 100, 0, PA_SCROLL_RIGHT, PA_SCROLL_RIGHT);
     break;
   }
@@ -259,7 +260,7 @@ void print_data_1h(ArduinoJson::V730PB22::JsonObject &data_block)
 String displayLocalTime()
 {
   struct tm timeinfo;
-  String frmt = "%H:%M:%S -- %a, %d.%m.";
+  String frmt = "%H:%M:%S -- %a -- %d.%m.";
   if (!getLocalTime(&timeinfo))
   {
     Serial.println("Failed to obtain time");
