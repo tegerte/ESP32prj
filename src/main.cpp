@@ -105,7 +105,7 @@ void loop()
   //////////////////////////             do all temp related stuff    //////////////////////////
   String temp_hum;
   static unsigned long last_run_temp_readout = 0;
-  const unsigned long INTERV_DUR_temperature = 100;
+  const unsigned long INTERV_DUR_temperature = 1000;
   if (millis() - last_run_temp_readout >= INTERV_DUR_temperature) {
     last_run_temp_readout = millis();
     temp_hum = read_temp_humidity_new();
