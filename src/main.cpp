@@ -259,7 +259,7 @@ void print_data_1h(ArduinoJson::V730PB22::JsonObject &data_block)
 String displayLocalTime()
 {
   struct tm timeinfo;
-  String frmt = "%H:%M:%S -- %a -- %d.%m.";
+  String frmt = "%H:%M:%S -- %a, %d.%m.";
   if (!getLocalTime(&timeinfo))
   {
     Serial.println("Failed to obtain time");
